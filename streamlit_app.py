@@ -272,6 +272,8 @@ def main():
             st.subheader("📊 Analysis Results")
             
             stats = result.get('stats', {})
+            weekly_pulse = result.get('weekly_pulse')  # Get weekly_pulse before using it
+            
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -288,7 +290,6 @@ def main():
                 st.metric("Pulse Generated", pulse_status)
             
             # Show weekly pulse if available
-            weekly_pulse = result.get('weekly_pulse')
             if weekly_pulse:
                 st.divider()
                 st.subheader("📝 Weekly Product Pulse")
@@ -376,34 +377,43 @@ def main():
         
         st.divider()
         
-        st.header("⚙️ Configuration Status")
+        st.header("🗄️ Database Information")
         
-        # Check environment variables
-        env_status = {
-            'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
-            'SMTP_HOST': os.getenv('SMTP_HOST'),
-            'SMTP_USERNAME': os.getenv('SMTP_USERNAME'),
-            'DATABASE_URL': os.getenv('DATABASE_URL'),
-        }
+        # Show database connection info
+        db_url = os.getenv("DATABASE_URL", "Not set")
+        if db_url.startswith("postgresql://"):
+            st.success("✅ PostgreSQL (Neon)")
+            # Mask password and show connection details
+            if "@" in db_url:
+                parts = db_url.split("@")
+                if len(parts) > 1:
+                    host_part = parts[1].split("/")[0] if "/" in parts[1] else parts[1]
+                    db_name = parts[1].split("/")[1].split("?")[0] if "/" in parts[1] else "unknown"
+                    st.info(f"**Host:** {host_part}")
+                    st.info(f"**Database:** {db_name}")
+        elif db_url.startswith("sqlite://"):
+            st.warning("⚠️ SQLite (local)")
+            st.info("Not recommended for production")
+        else:
+            st.info("Using default SQLite")
         
-        for key, value in env_status.items():
-            if value:
-                st.success(f"✅ {key}")
-            else:
-                st.error(f"❌ {key} not set")
-        
-        if st.checkbox("Show database info"):
-            db_url = os.getenv("DATABASE_URL", "Not set")
-            if db_url.startswith("postgresql://"):
-                st.success("✅ PostgreSQL configured")
-                # Mask password
-                if "@" in db_url:
-                    parts = db_url.split("@")
-                    st.code(f"postgresql://***@{parts[1] if len(parts) > 1 else 'unknown'}")
-            elif db_url.startswith("sqlite://"):
-                st.warning("⚠️ Using SQLite (not recommended for production)")
-            else:
-                st.info("Using default SQLite")
+        # Show table status
+        try:
+            from sqlalchemy import inspect
+            with get_db_session() as session:
+                inspector = inspect(session.bind)
+                tables = inspector.get_table_names()
+                required_tables = ['apps', 'subscriptions', 'weekly_batches', 'reviews', 'theme_summaries', 'weekly_pulse_notes']
+                existing_tables = [t for t in required_tables if t in tables]
+                
+                st.markdown("**Tables:**")
+                if len(existing_tables) == len(required_tables):
+                    st.success(f"✅ All {len(existing_tables)} tables exist")
+                else:
+                    st.warning(f"⚠️ {len(existing_tables)}/{len(required_tables)} tables exist")
+                    st.caption(f"Missing: {', '.join([t for t in required_tables if t not in existing_tables])}")
+        except Exception as e:
+            st.error(f"❌ DB check failed: {str(e)[:50]}")
         
         st.divider()
         
