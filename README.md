@@ -163,7 +163,6 @@ pytest tests/test_pipeline.py -v
 - **[Groq Setup](./GROQ_SETUP.md)**: Detailed Groq API setup instructions
 - **[SMTP Setup](./SMTP_SETUP.md)**: Email service configuration
 - **[Project Roadmap](./PROJECT_ROADMAP.md)**: Development roadmap and completed modules
-- **[Quick Start UI](./QUICK_START_UI.md)**: Frontend setup guide
 
 ## 🔧 Utility Scripts
 
