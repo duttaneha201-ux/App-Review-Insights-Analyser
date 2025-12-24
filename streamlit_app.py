@@ -322,16 +322,25 @@ def main():
                     status_text.text("Sending email...")
                     email_service = EmailService()
                     
-                    # Get app name from result
-                    app_name = result.get('app_id', 'App')
-                    if app_name:
-                        app_name = app_name.split('.')[-1].title()
+                    # Get app name from result (extracted from Play Store) or database
+                    app_name = result.get('app_name') or 'App'  # Default
+                    if not app_name or app_name == 'App':
+                        app_id_str = result.get('app_id')
+                        if app_id_str:
+                            with get_db_session() as session:
+                                app = AppRepository.get_by_playstore_id(session, app_id_str)
+                                if app:
+                                    app_name = app.app_name
+                    
+                    # Get date range from result
+                    date_range = result.get('date_range')
                     
                     email_result = email_service.send_weekly_pulse(
                         to_emails=[email],
                         pulse=weekly_pulse,
                         app_name=app_name,
-                        audience='product_manager'
+                        audience='product_manager',
+                        date_range=date_range
                     )
                     
                     if email_result.get('success'):

@@ -150,6 +150,60 @@ class SubscriptionRepository:
         
         if subscription:
             subscription.is_active = False
+    
+    @staticmethod
+    def find_by_email_and_app(
+        session: Session,
+        email: str,
+        app_id: int
+    ) -> Optional[Subscription]:
+        """
+        Find subscription by email and app ID.
+        
+        Args:
+            session: Database session
+            email: Email address
+            app_id: App ID
+            
+        Returns:
+            Subscription if found, None otherwise
+        """
+        return session.query(Subscription).filter(
+            and_(
+                Subscription.email == email,
+                Subscription.app_id == app_id
+            )
+        ).first()
+    
+    @staticmethod
+    def deactivate_by_email_and_app(
+        session: Session,
+        email: str,
+        app_id: int
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Deactivate subscription by email and app ID.
+        
+        Args:
+            session: Database session
+            email: Email address
+            app_id: App ID
+            
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        subscription = SubscriptionRepository.find_by_email_and_app(
+            session, email, app_id
+        )
+        
+        if not subscription:
+            return False, "Subscription not found"
+        
+        if not subscription.is_active:
+            return False, "Subscription is already inactive"
+        
+        subscription.is_active = False
+        return True, "Successfully unsubscribed"
 
 
 class WeeklyBatchRepository:

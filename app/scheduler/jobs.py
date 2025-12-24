@@ -201,12 +201,18 @@ def _process_weekly_batch(
         
         # Send email
         try:
+            # Get app name from database
+            with get_db_session() as session:
+                app = AppRepository.get_by_id(session, app_id)
+                app_name = app.app_name if app else result.get('app_id', 'App')
+            
             email_service = EmailService()
             email_service.send_weekly_pulse(
                 to_emails=[email],
                 pulse=weekly_pulse,
-                app_name=result.get('app_id', 'App'),
-                audience='product_manager'
+                app_name=app_name,
+                audience='product_manager',
+                date_range=(week_start, week_end)
             )
             logger.info(f"Email sent successfully to {email}")
         except Exception as e:

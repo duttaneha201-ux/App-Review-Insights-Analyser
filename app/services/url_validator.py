@@ -13,6 +13,13 @@ from typing import Optional, Dict, Tuple
 from urllib.parse import urlparse, parse_qs
 import requests
 from requests.adapters import HTTPAdapter
+
+try:
+    from google_play_scraper import app as gp_app
+    HAS_GP_SCRAPER = True
+except ImportError:
+    HAS_GP_SCRAPER = False
+    logger.warning("google-play-scraper not available for app name extraction")
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -338,6 +345,15 @@ class PlayStoreURLValidator:
         result['app_exists'] = exists
         if error:
             result['error'] = error
+        
+        # Step 4: Extract app name if app exists
+        if exists and HAS_GP_SCRAPER:
+            try:
+                app_details = gp_app(app_id, lang='en', country='us')
+                result['app_name'] = app_details.get('title', None)
+            except Exception as e:
+                logger.warning(f"Could not extract app name for {app_id}: {e}")
+                # Don't fail validation if name extraction fails
         
         return result
 

@@ -263,10 +263,17 @@ def extract_clean_and_synthesize(
     weekly_pulse = None
     if themes:
         try:
-            # Extract app name from URL if possible
-            app_name = None
-            if extraction_result['app_id']:
-                app_name = extraction_result['app_id'].split('.')[-1].title()
+            # Get app name from validation result (extracted from Play Store)
+            app_name = extraction_result.get('app_name')
+            if not app_name and extraction_result['app_id']:
+                # Fallback: try to get from database
+                with get_db_session() as session:
+                    app = AppRepository.get_by_playstore_id(session, extraction_result['app_id'])
+                    if app:
+                        app_name = app.app_name
+                    else:
+                        # Last resort: use formatted app_id
+                        app_name = extraction_result['app_id'].split('.')[-1].title()
             
             synthesizer = WeeklySynthesisEngine(api_key=groq_api_key)
             weekly_pulse = synthesizer.synthesize_weekly_pulse(themes, app_name)
@@ -283,14 +290,20 @@ def extract_clean_and_synthesize(
         app_id_str = extraction_result['app_id']
         
         with get_db_session() as session:
+            # Get app name from validation result (extracted from Play Store)
+            extracted_app_name = extraction_result.get('app_name')
+            
             # Get or create app
             app = AppRepository.get_or_create_by_playstore_id(
                 session,
                 playstore_app_id=app_id_str,
-                app_name=app_name or app_id_str,
+                app_name=extracted_app_name or app_name or app_id_str,
                 app_url=play_store_url,
             )
             session.commit()
+            
+            # Update app_name variable with the actual stored name
+            app_name = app.app_name
             
             # Get or create weekly batch
             batch = WeeklyBatchRepository.get_or_create(
@@ -354,11 +367,23 @@ def extract_clean_and_synthesize(
         errors.append(f"Database save failed: {str(e)}")
         # Don't fail the whole pipeline if DB save fails
     
+    # Get final app name from database
+    final_app_name = None
+    if extraction_result['app_id']:
+        try:
+            with get_db_session() as session:
+                app = AppRepository.get_by_playstore_id(session, extraction_result['app_id'])
+                if app:
+                    final_app_name = app.app_name
+        except Exception:
+            pass  # Don't fail if we can't get app name
+    
     return {
         'reviews': reviews,
         'themes': themes,
         'weekly_pulse': weekly_pulse,
         'app_id': extraction_result['app_id'],
+        'app_name': final_app_name or extraction_result.get('app_name'),
         'app_exists': True,
         'date_range': extraction_result['date_range'],
         'stats': stats,
