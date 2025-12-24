@@ -30,7 +30,7 @@ def main():
     database_url = os.getenv("DATABASE_URL")
     
     if not database_url:
-        print("❌ ERROR: DATABASE_URL not found in environment")
+        print("[ERROR] DATABASE_URL not found in environment")
         print()
         print("Please set DATABASE_URL in your .env file:")
         print("  DATABASE_URL=postgresql://username:password@ep-xxxxx.neon.tech/neondb?sslmode=require")
@@ -45,7 +45,7 @@ def main():
         init_db()
         print()
         print("=" * 70)
-        print("✅ TABLES CREATED SUCCESSFULLY!")
+        print("[SUCCESS] TABLES CREATED SUCCESSFULLY!")
         print("=" * 70)
         print()
         print("Created tables:")
@@ -60,7 +60,7 @@ def main():
     except Exception as e:
         print()
         print("=" * 70)
-        print("❌ FAILED TO CREATE TABLES!")
+        print("[ERROR] FAILED TO CREATE TABLES!")
         print("=" * 70)
         print()
         print(f"Error: {str(e)}")
