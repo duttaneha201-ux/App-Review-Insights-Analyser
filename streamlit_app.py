@@ -252,7 +252,12 @@ def main():
             with col1:
                 st.metric("Total Reviews", stats.get('total_reviews', 0))
             with col2:
-                st.metric("Themes Identified", stats.get('themes_identified', 0))
+                themes_count = stats.get('themes_identified', 0)
+                key_themes_count = len(weekly_pulse.themes) if weekly_pulse and weekly_pulse.themes else 0
+                if themes_count > 0 and key_themes_count > 0:
+                    st.metric("Key Themes", f"{key_themes_count} of {themes_count}")
+                else:
+                    st.metric("Themes Identified", themes_count)
             with col3:
                 pulse_status = "✅ Yes" if stats.get('pulse_generated') else "❌ No"
                 st.metric("Pulse Generated", pulse_status)
@@ -268,15 +273,51 @@ def main():
                 
                 if weekly_pulse.themes:
                     st.markdown("#### Key Themes")
-                    for theme in weekly_pulse.themes:
-                        st.markdown(f"- **{theme.get('theme', 'Unknown')}**: {theme.get('summary', '')}")
+                    for i, theme in enumerate(weekly_pulse.themes, 1):
+                        theme_name = theme.get('name', theme.get('theme', 'Unknown Theme'))
+                        theme_summary = theme.get('summary', '')
+                        st.markdown(f"{i}. **{theme_name}**: {theme_summary}")
+                
+                if weekly_pulse.quotes:
+                    st.markdown("#### User Quotes")
+                    for quote in weekly_pulse.quotes:
+                        st.markdown(f"> *\"{quote}\"*")
                 
                 if weekly_pulse.actions:
                     st.markdown("#### Recommended Actions")
                     for action in weekly_pulse.actions:
                         st.markdown(f"- {action}")
             
-            st.info("📧 An email with detailed insights will be sent to your email address shortly.")
+            # Send email
+            if weekly_pulse:
+                try:
+                    from app.services.email_service import EmailService
+                    
+                    status_text.text("Sending email...")
+                    email_service = EmailService()
+                    
+                    # Get app name from result
+                    app_name = result.get('app_id', 'App')
+                    if app_name:
+                        app_name = app_name.split('.')[-1].title()
+                    
+                    email_result = email_service.send_weekly_pulse(
+                        to_emails=[email],
+                        pulse=weekly_pulse,
+                        app_name=app_name,
+                        audience='product_manager'
+                    )
+                    
+                    if email_result.get('success'):
+                        st.success(f"📧 Email sent successfully to {email}! Check your inbox (and spam folder).")
+                    else:
+                        st.warning(f"⚠️ Email sending failed: {email_result.get('errors', ['Unknown error'])[0]}")
+                        st.info("📧 You can view the analysis results above. Email will be retried automatically.")
+                except Exception as e:
+                    st.warning(f"⚠️ Could not send email: {str(e)}")
+                    st.info("📧 You can view the analysis results above. Email will be retried automatically.")
+            else:
+                st.info("📧 No weekly pulse generated, so no email will be sent.")
             
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")

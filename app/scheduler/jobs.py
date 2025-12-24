@@ -203,7 +203,7 @@ def _process_weekly_batch(
         try:
             email_service = EmailService()
             email_service.send_weekly_pulse(
-                recipient_email=email,
+                to_emails=[email],
                 pulse=weekly_pulse,
                 app_name=result.get('app_id', 'App'),
                 audience='product_manager'
