@@ -157,7 +157,8 @@ pytest tests/test_pipeline.py -v
 
 ## 📚 Documentation
 
-- **[Neon Database Setup](./NEON_DATABASE_SETUP.md)**: PostgreSQL/Neon database configuration for Streamlit Cloud
+- **[Streamlit Deployment](./STREAMLIT_DEPLOYMENT.md)**: Complete guide to deploy on Streamlit Cloud
+- **[Neon Database Setup](./NEON_DATABASE_SETUP.md)**: PostgreSQL/Neon database configuration
 - **[GitHub Actions Setup](./GITHUB_ACTIONS_SETUP.md)**: Automated weekly scheduler configuration
 - **[Dependencies & Credentials](./DEPENDENCIES_AND_CREDENTIALS.md)**: Setup guide for API keys and credentials
 - **[Groq Setup](./GROQ_SETUP.md)**: Detailed Groq API setup instructions
