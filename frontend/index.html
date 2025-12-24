@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Review Insights Analyzer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #1a202c;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input.error {
+            border-color: #e53e3e;
+        }
+
+        .week-selector {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .week-value {
+            min-width: 60px;
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 8px;
+        }
+
+        .submit-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #e53e3e;
+            font-size: 14px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .success-message {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 24px;
+            border: 1px solid #9ae6b4;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .help-text {
+            color: #718096;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>App Review Insights</h1>
+        <p class="subtitle">
+            Get weekly insights from your Google Play Store reviews
+        </p>
+        
+        <form id="subscriptionForm">
+            <!-- Play Store URL Input -->
+            <div class="form-group">
+                <label for="playstoreUrl">
+                    Google Play Store App URL <span style="color: #e53e3e;">*</span>
+                </label>
+                <input
+                    type="text"
+                    id="playstoreUrl"
+                    name="playstoreUrl"
+                    placeholder="https://play.google.com/store/apps/details?id=com.example.app"
+                    required
+                />
+                <div id="urlError" class="error-message" style="display: none;"></div>
+                <div class="help-text">
+                    Enter the full URL of your app from Google Play Store
+                </div>
+            </div>
+
+            <!-- Week Range Selector -->
+            <div class="form-group">
+                <label for="weeks">
+                    Week Range <span style="color: #e53e3e;">*</span>
+                </label>
+                <div class="week-selector">
+                    <input
+                        type="range"
+                        id="weeks"
+                        name="weeks"
+                        min="1"
+                        max="12"
+                        value="4"
+                        required
+                    />
+                    <div class="week-value" id="weekValue">4 weeks</div>
+                </div>
+                <div id="weeksError" class="error-message" style="display: none;"></div>
+                <div class="help-text">
+                    Select how many weeks of reviews to analyze (reviews from last 7 days are excluded)
+                </div>
+            </div>
+
+            <!-- Email Input -->
+            <div class="form-group">
+                <label for="email">
+                    Email Address <span style="color: #e53e3e;">*</span>
+                </label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="your.email@example.com"
+                    required
+                />
+                <div id="emailError" class="error-message" style="display: none;"></div>
+                <div class="help-text">
+                    You will receive weekly insights at this email address
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="submit-button" id="submitButton">
+                Start Analysis
+            </button>
+
+            <!-- Error Message -->
+            <div id="submitError" class="error-message" style="display: none; margin-top: 16px;"></div>
+
+            <!-- Success Message -->
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+        </form>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000/api/subscriptions';
+
+        // Week range slider update
+        const weeksSlider = document.getElementById('weeks');
+        const weekValue = document.getElementById('weekValue');
+        weeksSlider.addEventListener('input', (e) => {
+            weekValue.textContent = `${e.target.value} weeks`;
+        });
+
+        // Form validation
+        function validatePlayStoreUrl(url) {
+            if (!url.trim()) {
+                return 'Play Store URL is required';
+            }
+            const playStorePattern =
+                /^https?:\/\/(play\.google\.com\/store\/apps\/details\?id=|apps\.android\.com\/details\?id=)[a-zA-Z0-9._-]+/;
+            if (!playStorePattern.test(url)) {
+                return 'Please enter a valid Google Play Store app URL';
+            }
+            return null;
+        }
+
+        function validateEmail(email) {
+            if (!email.trim()) {
+                return 'Email is required';
+            }
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(email)) {
+                return 'Please enter a valid email address';
+            }
+            return null;
+        }
+
+        function validateWeeks(weeks) {
+            const numWeeks = parseInt(weeks);
+            if (numWeeks < 1 || numWeeks > 12) {
+                return 'Week range must be between 1 and 12';
+            }
+            return null;
+        }
+
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = `⚠️ ${message}`;
+            errorElement.style.display = 'flex';
+        }
+
+        function hideError(elementId) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const successElement = document.getElementById('successMessage');
+            successElement.innerHTML = `<strong>✓ Success!</strong><div style="margin-top: 8px;">${message}</div>`;
+            successElement.style.display = 'block';
+        }
+
+        function hideSuccess() {
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        function setLoading(isLoading) {
+            const submitButton = document.getElementById('submitButton');
+            if (isLoading) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="loading"><div class="spinner"></div>Processing...</span>';
+            } else {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Start Analysis';
+            }
+        }
+
+        // Form submission
+        document.getElementById('subscriptionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Hide previous errors and success
+            hideError('urlError');
+            hideError('emailError');
+            hideError('weeksError');
+            hideError('submitError');
+            hideSuccess();
+
+            // Get form values
+            const playstoreUrl = document.getElementById('playstoreUrl').value.trim();
+            const weeks = parseInt(document.getElementById('weeks').value);
+            const email = document.getElementById('email').value.trim();
+
+            // Frontend validation
+            let hasErrors = false;
+
+            const urlError = validatePlayStoreUrl(playstoreUrl);
+            if (urlError) {
+                showError('urlError', urlError);
+                document.getElementById('playstoreUrl').classList.add('error');
+                hasErrors = true;
+            } else {
+                document.getElementById('playstoreUrl').classList.remove('error');
+            }
+
+            const emailError = validateEmail(email);
+            if (emailError) {
+                showError('emailError', emailError);
+                document.getElementById('email').classList.add('error');
+                hasErrors = true;
+            } else {
+                document.getElementById('email').classList.remove('error');
+            }
+
+            const weeksError = validateWeeks(weeks);
+            if (weeksError) {
+                showError('weeksError', weeksError);
+                hasErrors = true;
+            }
+
+            if (hasErrors) {
+                return;
+            }
+
+            // Disable form and show loading
+            setLoading(true);
+            document.getElementById('playstoreUrl').disabled = true;
+            document.getElementById('weeks').disabled = true;
+            document.getElementById('email').disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        playstore_url: playstoreUrl,
+                        weeks: weeks,
+                        email: email,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // Handle different error types
+                    let errorMessage = 'Something went wrong. Please try again later.';
+
+                    if (response.status === 400) {
+                        if (data.detail && data.detail.includes('does not exist')) {
+                            errorMessage = 'This app does not exist on Play Store.';
+                        } else if (data.detail && data.detail.includes('No reviews')) {
+                            errorMessage = 'No reviews found for the selected time range.';
+                        } else if (data.detail && data.detail.includes('email')) {
+                            errorMessage = 'Please enter a valid email address.';
+                        } else {
+                            errorMessage = data.detail || errorMessage;
+                        }
+                    } else if (response.status === 404) {
+                        errorMessage = 'This app does not exist on Play Store.';
+                    }
+
+                    showError('submitError', errorMessage);
+                    setLoading(false);
+                    document.getElementById('playstoreUrl').disabled = false;
+                    document.getElementById('weeks').disabled = false;
+                    document.getElementById('email').disabled = false;
+                    return;
+                }
+
+                // Success
+                showSuccess(
+                    data.message || 'Analysis started. You will receive the insights by email.'
+                );
+                setLoading(false);
+
+                // Reset form after 5 seconds
+                setTimeout(() => {
+                    document.getElementById('subscriptionForm').reset();
+                    weekValue.textContent = '4 weeks';
+                    hideSuccess();
+                    document.getElementById('playstoreUrl').disabled = false;
+                    document.getElementById('weeks').disabled = false;
+                    document.getElementById('email').disabled = false;
+                }, 5000);
+
+            } catch (error) {
+                console.error('Submission error:', error);
+                // Check if it's a network/connection error
+                let errorMessage = 'Something went wrong. Please try again later.';
+                if (error instanceof TypeError && error.message.includes('fetch')) {
+                    errorMessage = 'Cannot connect to server. Please make sure the backend API is running on http://localhost:8000';
+                } else if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+                    errorMessage = 'Connection failed. Please check that the backend server is running.';
+                }
+                showError('submitError', errorMessage);
+                setLoading(false);
+                document.getElementById('playstoreUrl').disabled = false;
+                document.getElementById('weeks').disabled = false;
+                document.getElementById('email').disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
