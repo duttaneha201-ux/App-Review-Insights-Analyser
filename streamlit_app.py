@@ -29,7 +29,7 @@ load_dotenv()
 # Import app modules
 from app.services.url_validator import PlayStoreURLValidator
 from app.pipeline import extract_clean_and_synthesize
-from app.db.database import get_db_session, init_db
+from app.db.database import get_db_session, init_db, engine
 from app.db.repository import (
     AppRepository,
     SubscriptionRepository,
@@ -64,25 +64,40 @@ def validate_inputs(playstore_url: str, weeks: int, email: str) -> tuple[bool, s
     return True, ""
 
 
-def check_database_initialized():
-    """Check if database tables exist, create if not"""
+def ensure_database_initialized():
+    """Ensure database tables exist, create if not (idempotent)"""
     try:
+        from sqlalchemy import inspect
+        from app.db.models import Base
+        
+        # Try to check if tables exist
         with get_db_session() as session:
-            from sqlalchemy import inspect
             inspector = inspect(session.bind)
             tables = inspector.get_table_names()
-            if not tables:
-                st.info("Initializing database...")
-                init_db()
-                st.success("Database initialized!")
-                st.rerun()
+            
+            # Check if we have all required tables
+            required_tables = ['apps', 'subscriptions', 'weekly_batches', 'reviews', 'theme_summaries', 'weekly_pulse_notes']
+            missing_tables = [t for t in required_tables if t not in tables]
+            
+            if missing_tables:
+                # Create all tables
+                Base.metadata.create_all(bind=session.bind)
+                return True
+            return False
     except Exception as e:
-        st.warning(f"Database check: {e}")
+        # If check fails, try to create tables anyway
+        try:
+            from app.db.models import Base
+            Base.metadata.create_all(bind=engine)
+            return True
+        except Exception as create_error:
+            st.error(f"❌ Database initialization failed: {str(create_error)}")
+            st.error("Please check your DATABASE_URL in Streamlit Cloud secrets.")
+            raise
 
 
 def main():
     """Main Streamlit app"""
-    
     # Header
     st.title("📱 App Review Insights Analyzer")
     st.markdown("""
@@ -99,8 +114,18 @@ def main():
     
     st.divider()
     
-    # Check database
-    check_database_initialized()
+    # Ensure database is initialized (idempotent - safe to call multiple times)
+    if 'db_initialized' not in st.session_state:
+        try:
+            ensure_database_initialized()
+            st.session_state.db_initialized = True
+        except Exception as e:
+            st.error(f"❌ Database Error: {str(e)}")
+            st.error("**Troubleshooting:**")
+            st.error("1. Check DATABASE_URL in Streamlit Cloud secrets")
+            st.error("2. Verify database connection string is correct")
+            st.error("3. Ensure database is active (not paused) in Neon dashboard")
+            st.stop()
     
     # Main form
     with st.form("subscription_form", clear_on_submit=False):
